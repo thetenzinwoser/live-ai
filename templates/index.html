@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live AI Transcription</title>
+    <style>
+        #start-transcription {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #start-transcription:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Live AI Transcription!</h1>
+    <p>This is a placeholder for your transcription interface.</p>
+
+    <!-- Button -->
+    <button id="start-transcription">Start Transcription</button>
+
+    <!-- Add JavaScript -->
+    <script>
+        document.getElementById("start-transcription").addEventListener("click", function() {
+            fetch("/start-transcription", {
+                method: "POST",
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message); // Show feedback from the server
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+        });
+    </script>
+</body>
+</html>
