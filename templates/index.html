@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live AI Transcription</title>
+    <title>Live AI - Active Listening</title>
     <style>
-        #start-transcription {
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+
+        #start-listening {
             padding: 10px 20px;
             font-size: 16px;
             color: white;
@@ -13,33 +19,48 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.5s ease, transform 0.2s ease;
         }
 
-        #start-transcription:hover {
+        #start-listening:hover {
             background-color: #0056b3;
+            transform: scale(1.05);
         }
     </style>
 </head>
 <body>
-    <h1>Welcome to Live AI Transcription!</h1>
-    <p>This is a placeholder for your transcription interface.</p>
+    <h1>Active Listening Demo</h1>
+    <button id="start-listening">Start Listening</button>
+    <div id="indicator"></div>
 
-    <!-- Button -->
-    <button id="start-transcription">Start Transcription</button>
-
-    <!-- Add JavaScript -->
     <script>
-        document.getElementById("start-transcription").addEventListener("click", function() {
-            fetch("/start-transcription", {
-                method: "POST",
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message); // Show feedback from the server
-            })
-            .catch(error => {
-                console.error("Error:", error);
-            });
+        let isListening = false;
+
+        document.getElementById("start-listening").addEventListener("click", function () {
+            const button = document.getElementById("start-listening");
+
+            // Toggle listening state
+            isListening = !isListening;
+
+            // Send the request to the backend
+            fetch(isListening ? "/start-listening" : "/stop-listening", { method: "POST" })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+
+                    // Update button
+                    if (isListening) {
+                        button.textContent = "Stop Listening";
+                        button.style.backgroundColor = "#28a745"; // Gradual green color
+                    } else {
+                        button.textContent = "Start Listening";
+                        button.style.backgroundColor = "#007BFF"; // Gradual blue color
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    isListening = false; // Reset state on error
+                });
         });
     </script>
 </body>

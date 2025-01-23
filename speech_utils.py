@@ -1,113 +1,84 @@
 import pyaudio
 from google.cloud import speech
-from itertools import groupby
-
 import os
+
+# Set start method for multiprocessing
 if __name__ == "__main__":
     os.set_start_method("spawn")
 
+# Global variables for in-memory transcription
+transcriptions = []  # To store all transcriptions in memory
+recent_transcriptions = []  # Cache to store recent transcriptions
+CACHE_LIMIT = 10  # Limit the cache size to the last 10 phrases
+last_saved_segment = ""  # To track the last saved transcription
 
-import pyaudio
-from google.cloud import speech
+
+def save_transcription_to_file(transcription):
+    """Append the latest transcription to the file."""
+    with open("transcriptions/live_transcription.txt", "a") as f:  # Use "a" mode to append
+        f.write(transcription + "\n")
+
+
+def get_full_transcription():
+    """Return all transcriptions as a single string."""
+    return "\n".join(transcriptions)
+
 
 def transcribe_streaming():
-    """Stream and transcribe audio in real-time with speaker diarization."""
+    """Stream and transcribe audio in real-time without diarization."""
     client = speech.SpeechClient()
 
-    # Configure the audio stream with speaker diarization enabled
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=16000,
-        language_code="en-US",
-        diarization_config=speech.SpeakerDiarizationConfig(
-            enable_speaker_diarization=True,
-            min_speaker_count=2,
-            max_speaker_count=2
+    def start_stream():
+        """Inner function to start the streaming session."""
+        config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+            sample_rate_hertz=16000,
+            language_code="en-US",
+            enable_automatic_punctuation=True  # Enable punctuation for readability
         )
-    )
-    streaming_config = speech.StreamingRecognitionConfig(config=config)
+        streaming_config = speech.StreamingRecognitionConfig(config=config)
 
-    # Set up microphone input
-    p = pyaudio.PyAudio()
-    stream = p.open(format=pyaudio.paInt16,
-                    channels=1,
-                    rate=16000,
-                    input=True,
-                    frames_per_buffer=1024)
+        # Set up microphone input
+        p = pyaudio.PyAudio()
+        stream = p.open(format=pyaudio.paInt16,
+                        channels=1,
+                        rate=16000,
+                        input=True,
+                        frames_per_buffer=1024)
 
-    print("Listening... Press Ctrl+C to stop.")
+        def generator():
+            while True:
+                yield stream.read(1024)
 
-    def generator():
-        while True:
-            yield stream.read(1024)
+        # Send audio chunks to Google Cloud and get responses
+        requests = (speech.StreamingRecognizeRequest(audio_content=chunk) for chunk in generator())
+        return client.streaming_recognize(config=streaming_config, requests=requests)
 
-    # Send audio chunks to Google Cloud and get responses
-    requests = (speech.StreamingRecognizeRequest(audio_content=chunk) for chunk in generator())
-    responses = client.streaming_recognize(config=streaming_config, requests=requests)
-
-    transcription = ""
-
-    processed_segments = set()  # To track and avoid repeated segments
-
-    try:
-        for response in responses:
-            for result in response.results:
-                if result.is_final:
-                    words = result.alternatives[0].words
-                    confidence = result.alternatives[0].confidence
-
-                    # Initialize variables for grouping
-                    grouped_transcription = []
-                    current_speaker = None
-                    current_phrase = []
-
-                    for word in words:
-                        # Check if the speaker changes
-                        if current_speaker is None:
-                            current_speaker = word.speaker_tag  # Initialize speaker
-                        elif word.speaker_tag != current_speaker:
-                            # Finalize the current speaker's phrase
-                            if current_phrase:
-                                phrase = " ".join(current_phrase)
-                                segment = f"Speaker {current_speaker}: {phrase} (Confidence: {confidence:.2f})"
-                                if segment not in processed_segments:
-                                    grouped_transcription.append(segment)
-                                    processed_segments.add(segment)
-                            current_phrase = []  # Reset for the new speaker
-                            current_speaker = word.speaker_tag  # Update speaker
-
-                        # Append the current word
-                        current_phrase.append(word.word)
-
-                        # Finalize the phrase if punctuation is present
-                        if word.word.endswith((".", "!", "?")):
-                            phrase = " ".join(current_phrase)
-                            segment = f"Speaker {current_speaker}: {phrase} (Confidence: {confidence:.2f})"
-                            if segment not in processed_segments:
-                                grouped_transcription.append(segment)
-                                processed_segments.add(segment)
-                            current_phrase = []  # Reset for the next sentence
-
-                    # Finalize the last speaker's phrase
-                    if current_phrase:
-                        phrase = " ".join(current_phrase)
-                        segment = f"Speaker {current_speaker}: {phrase} (Confidence: {confidence:.2f})"
-                        if segment not in processed_segments:
-                            grouped_transcription.append(segment)
-                            processed_segments.add(segment)
-
-                    # Save the grouped transcription to a file
-                    with open("transcriptions/live_transcription.txt", "a") as f:
-                        f.write("\n".join(grouped_transcription) + "\n")
-
-                    # Print the grouped transcription to the console
-                    print("\n".join(grouped_transcription))
+    while True:  # Loop to restart the session
+        try:
+            print("Starting new session...")
+            responses = start_stream()
+            process_responses(responses)  # Process the transcription responses
+        except Exception as e:
+            print(f"Stream ended: {e}. Restarting...")
+            continue  # Restart the loop to create a new session
 
 
+def process_responses(responses):
+    """Handle transcription responses and filter out duplicates."""
+    global transcriptions, last_saved_segment  # Use global to access in-memory storage
 
+    for response in responses:
+        for result in response.results:
+            if result.is_final:
+                transcript = result.alternatives[0].transcript
+                confidence = result.alternatives[0].confidence
 
-    except Exception as e:
-        print(f"Error during streaming transcription: {e}")
+                # Filter out duplicate or repeated phrases
+                if transcript != last_saved_segment:
+                    last_saved_segment = transcript  # Update last saved segment
+                    transcriptions.append(f"{transcript} (Confidence: {confidence:.2f})")
+                    save_transcription_to_file(f"{transcript} (Confidence: {confidence:.2f})")
 
-
-
+                    # Print the transcription to the console
+                    print(f"{transcript} (Confidence: {confidence:.2f})")
