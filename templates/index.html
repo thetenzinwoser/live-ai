@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live AI - Active Listening</title>
+    <title>Interactive Transcription</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            padding: 50px;
+            padding: 20px;
         }
 
-        #start-listening {
+        #start-transcription {
             padding: 10px 20px;
             font-size: 16px;
             color: white;
@@ -19,49 +19,104 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.5s ease, transform 0.2s ease;
+            transition: background-color 0.3s ease;
         }
 
-        #start-listening:hover {
-            background-color: #0056b3;
-            transform: scale(1.05);
+        #start-transcription.active {
+            background-color: #28a745; /* Green when active */
+        }
+
+        #active-line {
+            width: 0;
+            height: 5px;
+            background-color: #28a745;
+            margin: 20px auto;
+            transition: width 0.5s ease;
+        }
+
+        #transcription-history {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .transcription-line {
+            height: 5px;
+            background-color: #6c757d; /* Gray for history lines */
+            margin: 5px 0;
+            transition: all 0.5s ease;
         }
     </style>
 </head>
 <body>
-    <h1>Active Listening Demo</h1>
-    <button id="start-listening">Start Listening</button>
-    <div id="indicator"></div>
+    <h1>Interactive Transcription Visualization</h1>
+    <button id="start-transcription">Start Transcription</button>
+    <div id="active-line"></div>
+    <div id="transcription-history"></div>
 
     <script>
-        let isListening = false;
+        let isTranscribing = false;
 
-        document.getElementById("start-listening").addEventListener("click", function () {
-            const button = document.getElementById("start-listening");
+        // Start/Stop Transcription Button
+        const startButton = document.getElementById("start-transcription");
+        const activeLine = document.getElementById("active-line");
+        const historyContainer = document.getElementById("transcription-history");
 
-            // Toggle listening state
-            isListening = !isListening;
+        startButton.addEventListener("click", () => {
+            isTranscribing = !isTranscribing;
 
-            // Send the request to the backend
-            fetch(isListening ? "/start-listening" : "/stop-listening", { method: "POST" })
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data.message);
+            // Update button state
+            if (isTranscribing) {
+                startButton.textContent = "Stop Transcription";
+                startButton.classList.add("active");
 
-                    // Update button
-                    if (isListening) {
-                        button.textContent = "Stop Listening";
-                        button.style.backgroundColor = "#28a745"; // Gradual green color
-                    } else {
-                        button.textContent = "Start Listening";
-                        button.style.backgroundColor = "#007BFF"; // Gradual blue color
-                    }
-                })
-                .catch(error => {
-                    console.error("Error:", error);
-                    isListening = false; // Reset state on error
-                });
+                // Simulate transcription activity
+                startSimulatedTranscription();
+            } else {
+                startButton.textContent = "Start Transcription";
+                startButton.classList.remove("active");
+
+                // Clear active line
+                activeLine.style.width = "0";
+            }
         });
+
+        // Simulate Active Transcription
+        function startSimulatedTranscription() {
+            if (!isTranscribing) return;
+
+            // Simulate the line growing as words are spoken
+            let activeLineWidth = 0;
+            const activeInterval = setInterval(() => {
+                if (!isTranscribing) {
+                    clearInterval(activeInterval);
+                    return;
+                }
+
+                // Increase line width
+                activeLineWidth += Math.random() * 50; // Random growth for visual effect
+                activeLine.style.width = `${activeLineWidth}px`;
+
+                // If the line reaches a certain width, finalize it
+                if (activeLineWidth >= 300) {
+                    finalizeLine(activeLineWidth);
+                    activeLineWidth = 0; // Reset active line
+                    activeLine.style.width = "0";
+                }
+            }, 500); // Grow every 500ms
+        }
+
+        // Finalize Line
+        function finalizeLine(length) {
+            // Create a new history line
+            const historyLine = document.createElement("div");
+            historyLine.className = "transcription-line";
+            historyLine.style.width = `${length}px`;
+
+            // Add the line to the history container
+            historyContainer.appendChild(historyLine);
+        }
     </script>
 </body>
 </html>
