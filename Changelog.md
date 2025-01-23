@@ -13,3 +13,9 @@
 ## v1.2 - 1/20/2023
 - Added diarization to live transcription.
 - Began setting up Flask front end.
+
+## v1.3 - 1/23/2023
+- Added Flask front end.
+- Added non-diarized transcription saved to txt file.
+- Added utilities around asynchronous transcription for personal use currently.
+- Functional front end to enable synchronous transcription.

@@ -2,3 +2,4 @@ openai_key.txt
 venv/
 __pycache__/
 transcriptions/
+.env
