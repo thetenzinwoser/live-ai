@@ -7,8 +7,10 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
             padding: 50px;
+            background-color: #f3f3f3;
+            max-width: 600px;
+            margin: auto;
         }
 
         #start-listening {
@@ -58,14 +60,30 @@
             transform: scale(1.05);
         }
 
-        #ai-response {
-            margin: 20px 0;
-            font-size: 16px;
-            color: #333;
-            padding: 10px;
+        #qa-container {
+            margin-top: 30px;
+        }
+
+        #qa-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .qa-item {
+            background-color: #ffffff;
             border: 1px solid #ccc;
             border-radius: 5px;
-            background-color: #f9f9f9;
+            padding: 24px;
+            text-align: left;
+            /* max-width: 600px; */
+            margin: 0 auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .qa-item strong {
+            display: block;
+            margin-bottom: 8px;
         }
     </style>
 </head>
@@ -74,55 +92,45 @@
     <button id="start-listening">Start Listening</button>
     <div id="indicator">Click the button to start transcription.</div>
 
-    <!-- <div>
-        <input id="question-input" type="text" placeholder="Ask a question..." />
-        <button id="ask-ai">Ask AI</button>
-    </div>
-    <div id="ai-response">AI response will appear here.</div> -->
-
     <div id="qa-container">
         <h2>Questions and Answers</h2>
         <div id="qa-list">No questions detected yet.</div>
     </div>
-    
-    
 
     <script>
         let isListening = false;
 
         function fetchQuestions() {
-        fetch("/get-questions")
-            .then(response => response.json())
-            .then(data => {
-                const qaList = document.getElementById("qa-list");
-                if (data.questions && data.questions.length > 0) {
-                    qaList.innerHTML = ""; // Clear the list
-                    data.questions.forEach(item => {
-                        const questionEl = document.createElement("div");
-                        questionEl.innerHTML = `
-                            <strong>Q:</strong> ${item.question}<br>
-                            <strong>A:</strong> ${item.answer}<br><br>
-                        `;
-                        qaList.appendChild(questionEl);
-                    });
-                } else {
-                    qaList.textContent = "No questions detected yet.";
-                }
-            })
-            .catch(error => {
-                console.error("Error fetching questions:", error);
-            });
+            fetch("/get-questions")
+                .then(response => response.json())
+                .then(data => {
+                    const qaList = document.getElementById("qa-list");
+                    if (data.questions && data.questions.length > 0) {
+                        qaList.innerHTML = ""; // Clear the list
+                        data.questions.forEach(item => {
+                            const questionEl = document.createElement("div");
+                            questionEl.className = "qa-item";
+                            questionEl.innerHTML = `
+                                <strong>${item.question}</strong><br>
+                                ${item.answer}
+                            `;
+                            qaList.appendChild(questionEl);
+                        });
+                    } else {
+                        qaList.textContent = "No questions detected yet.";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching questions:", error);
+                });
         }
 
         // Poll the backend every 5 seconds for new questions
         setInterval(fetchQuestions, 1000);
 
-
-
         document.getElementById("start-listening").addEventListener("click", function () {
             const button = document.getElementById("start-listening");
             const indicator = document.getElementById("indicator");
-            const qaList = document.getElementById("qa-list");
 
             // Toggle listening state
             isListening = !isListening;
@@ -138,9 +146,6 @@
                         button.style.backgroundColor = "#28a745"; // Green color
                         indicator.textContent = "Listening... Transcribing in progress.";
                         indicator.style.color = "#28a745";
-
-                        // Clear the Questions/Answers section on the UI
-                        qaList.textContent = "No questions detected yet.";
                     } else {
                         button.textContent = "Start Listening";
                         button.style.backgroundColor = "#007BFF"; // Blue color
@@ -155,49 +160,6 @@
                     button.style.backgroundColor = "#007BFF";
                     indicator.textContent = "Error starting/stopping transcription.";
                     indicator.style.color = "red";
-                });
-        });
-
-
-        document.getElementById("ask-ai").addEventListener("click", function () {
-            const questionInput = document.getElementById("question-input");
-            const aiResponseDiv = document.getElementById("ai-response");
-
-            const question = questionInput.value.trim();
-
-            // Validate input
-            if (!question) {
-                aiResponseDiv.textContent = "Please enter a question.";
-                aiResponseDiv.style.color = "red";
-                return;
-            }
-
-            // Indicate loading state
-            aiResponseDiv.textContent = "Processing your question...";
-            aiResponseDiv.style.color = "#555";
-
-            // Call the backend endpoint
-            fetch("/ask-ai", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ question: question })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        aiResponseDiv.textContent = "Error: " + data.error;
-                        aiResponseDiv.style.color = "red";
-                    } else {
-                        aiResponseDiv.textContent = "AI Response: " + data.answer;
-                        aiResponseDiv.style.color = "#333";
-                    }
-                })
-                .catch(error => {
-                    console.error("Error:", error);
-                    aiResponseDiv.textContent = "An error occurred while processing your question.";
-                    aiResponseDiv.style.color = "red";
                 });
         });
     </script>
