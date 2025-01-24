@@ -26,18 +26,66 @@
             background-color: #0056b3;
             transform: scale(1.05);
         }
+
+        #indicator {
+            margin: 20px 0;
+            font-size: 18px;
+            color: #555;
+        }
+
+        #question-input {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            margin: 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #ask-ai {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #28a745;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.5s ease, transform 0.2s ease;
+        }
+
+        #ask-ai:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+
+        #ai-response {
+            margin: 20px 0;
+            font-size: 16px;
+            color: #333;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 <body>
     <h1>Active Listening Demo</h1>
     <button id="start-listening">Start Listening</button>
-    <div id="indicator"></div>
+    <div id="indicator">Click the button to start transcription.</div>
+
+    <div>
+        <input id="question-input" type="text" placeholder="Ask a question..." />
+        <button id="ask-ai">Ask AI</button>
+    </div>
+    <div id="ai-response">AI response will appear here.</div>
 
     <script>
         let isListening = false;
 
         document.getElementById("start-listening").addEventListener("click", function () {
             const button = document.getElementById("start-listening");
+            const indicator = document.getElementById("indicator");
 
             // Toggle listening state
             isListening = !isListening;
@@ -48,18 +96,68 @@
                 .then(data => {
                     console.log(data.message);
 
-                    // Update button
+                    // Update button and indicator
                     if (isListening) {
                         button.textContent = "Stop Listening";
-                        button.style.backgroundColor = "#28a745"; // Gradual green color
+                        button.style.backgroundColor = "#28a745"; // Green color
+                        indicator.textContent = "Listening... Transcribing in progress.";
+                        indicator.style.color = "#28a745";
                     } else {
                         button.textContent = "Start Listening";
-                        button.style.backgroundColor = "#007BFF"; // Gradual blue color
+                        button.style.backgroundColor = "#007BFF"; // Blue color
+                        indicator.textContent = "Transcription stopped.";
+                        indicator.style.color = "#555";
                     }
                 })
                 .catch(error => {
                     console.error("Error:", error);
                     isListening = false; // Reset state on error
+                    button.textContent = "Start Listening";
+                    button.style.backgroundColor = "#007BFF";
+                    indicator.textContent = "Error starting/stopping transcription.";
+                    indicator.style.color = "red";
+                });
+        });
+
+        document.getElementById("ask-ai").addEventListener("click", function () {
+            const questionInput = document.getElementById("question-input");
+            const aiResponseDiv = document.getElementById("ai-response");
+
+            const question = questionInput.value.trim();
+
+            // Validate input
+            if (!question) {
+                aiResponseDiv.textContent = "Please enter a question.";
+                aiResponseDiv.style.color = "red";
+                return;
+            }
+
+            // Indicate loading state
+            aiResponseDiv.textContent = "Processing your question...";
+            aiResponseDiv.style.color = "#555";
+
+            // Call the backend endpoint
+            fetch("/ask-ai", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ question: question })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        aiResponseDiv.textContent = "Error: " + data.error;
+                        aiResponseDiv.style.color = "red";
+                    } else {
+                        aiResponseDiv.textContent = "AI Response: " + data.answer;
+                        aiResponseDiv.style.color = "#333";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    aiResponseDiv.textContent = "An error occurred while processing your question.";
+                    aiResponseDiv.style.color = "red";
                 });
         });
     </script>
