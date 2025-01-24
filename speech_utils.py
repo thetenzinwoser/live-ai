@@ -1,6 +1,9 @@
 import pyaudio
 from google.cloud import speech
 import os
+import re
+from gpt_utils import get_gpt_response
+import json
 
 # Set start method for multiprocessing
 if __name__ == "__main__":
@@ -19,9 +22,42 @@ def save_transcription_to_file(transcription):
         f.write(transcription + "\n")
 
 
+def save_question_and_answer(question, answer):
+    """Save detected questions and their GPT answers to a JSON file."""
+    try:
+        with open("transcriptions/questions_answers.json", "r") as file:
+            qa_data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        qa_data = []
+
+    qa_data.append({"question": question, "answer": answer})
+
+    with open("transcriptions/questions_answers.json", "w") as file:
+        json.dump(qa_data, file, indent=4)
+
+
 def get_full_transcription():
     """Return all transcriptions as a single string."""
     return "\n".join(transcriptions)
+
+
+def detect_questions(transcription):
+    """
+    Detects questions from the transcription text.
+
+    Args:
+        transcription (str): The transcription text.
+
+    Returns:
+        list: A list of detected questions.
+    """
+    questions = []
+    for line in transcription.splitlines():
+        line = line.strip()
+        # Simple heuristic to detect questions
+        if line.endswith("?") or re.match(r"^(What|Why|How|When|Where|Who)\b", line, re.IGNORECASE):
+            questions.append(line)
+    return questions
 
 
 def transcribe_streaming():
@@ -81,4 +117,17 @@ def process_responses(responses):
                     save_transcription_to_file(f"{transcript} (Confidence: {confidence:.2f})")
 
                     # Print the transcription to the console
-                    print(f"{transcript} (Confidence: {confidence:.2f})")
+                    print(f"New line added: {transcript} (Confidence: {confidence:.2f})")
+
+                    # Detect and handle questions
+                    questions = detect_questions(transcript)
+                    for question in questions:
+                        print(f"Detected Question: {question}")
+                        try:
+                            # Query GPT for an answer
+                            answer = get_gpt_response(question, "\n".join(transcriptions))
+                            print(f"Answer: {answer}")
+                            # Save the question and answer
+                            save_question_and_answer(question, answer)
+                        except Exception as e:
+                            print(f"Error generating answer for question '{question}': {e}")
