@@ -19,3 +19,6 @@
 - Added non-diarized transcription saved to txt file.
 - Added utilities around asynchronous transcription for personal use currently.
 - Functional front end to enable synchronous transcription.
+
+## v1.4 - 1/23/2023
+- Added GPT prompting and UI polishing.

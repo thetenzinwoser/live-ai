@@ -16,7 +16,7 @@ def analyze_with_gpt(transcription, query):
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are an AI assistant helping with meeting discussions."},
-                {"role": "user", "content": f"Here is the meeting transcription so far: {transcription}. The user has a question: '{query}'. Please provide a response."}
+                {"role": "user", "content": f"Here is the meeting transcription so far: {transcription}. The transcription is live and ongoing. The confidence score indicates AI accuracy, with 1 being most confident. Lower scores suggest potential inaccuracies. The user has a question: '{query}'. Please provide a response."}
             ]
         )
         return response.choices[0].message.content
