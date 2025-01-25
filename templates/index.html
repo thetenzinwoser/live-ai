@@ -111,6 +111,7 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
     <h1>Active Listening Demo</h1>
@@ -127,8 +128,21 @@
         <div id="action-items" class="action-items">No action items detected yet.</div>
     </div>
 
+    <div id="meeting-minutes-container">
+        <h2>Meeting Minutes</h2>
+        <div id="meeting-minutes" class="action-items">No meeting minutes generated yet.</div>
+    </div>
+
     <script>
         let isListening = false;
+        const socket = io();
+
+        // Listen for content updates
+        socket.on('content_update', function() {
+            fetchQuestions();
+            fetchActionItems();
+            fetchMeetingMinutes();
+        });
 
         function fetchQuestions() {
             fetch("/get-questions")
@@ -136,8 +150,8 @@
                 .then(data => {
                     const qaList = document.getElementById("qa-list");
                     if (data.questions && data.questions.length > 0) {
-                        qaList.className = ""; // Remove empty-state class
-                        qaList.innerHTML = ""; // Clear the list
+                        qaList.className = "";
+                        qaList.innerHTML = "";
                         data.questions.forEach(item => {
                             const questionEl = document.createElement("div");
                             questionEl.className = "qa-item";
@@ -148,7 +162,7 @@
                             qaList.appendChild(questionEl);
                         });
                     } else {
-                        qaList.className = "empty-state"; // Add empty-state class
+                        qaList.className = "empty-state";
                         qaList.textContent = "No questions detected yet.";
                     }
                 })
@@ -173,11 +187,21 @@
                 });
         }
 
-        // Update the polling interval to include action items
-        setInterval(() => {
-            fetchQuestions();
-            fetchActionItems();
-        }, 1000);
+        function fetchMeetingMinutes() {
+            fetch("/get-meeting-minutes")
+                .then(response => response.json())
+                .then(data => {
+                    const minutesEl = document.getElementById("meeting-minutes");
+                    if (data.meeting_minutes && data.meeting_minutes.trim()) {
+                        minutesEl.textContent = data.meeting_minutes;
+                    } else {
+                        minutesEl.textContent = "No meeting minutes generated yet.";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching meeting minutes:", error);
+                });
+        }
 
         document.getElementById("start-listening").addEventListener("click", function () {
             const button = document.getElementById("start-listening");
@@ -194,19 +218,19 @@
 
                     if (isListening) {
                         button.textContent = "Stop Listening";
-                        button.style.backgroundColor = "#28a745"; // Green color
+                        button.style.backgroundColor = "#28a745";
                         indicator.textContent = "Listening... Transcribing in progress.";
                         indicator.style.color = "#28a745";
                     } else {
                         button.textContent = "Start Listening";
-                        button.style.backgroundColor = "#007BFF"; // Blue color
+                        button.style.backgroundColor = "#007BFF";
                         indicator.textContent = "Transcription stopped.";
                         indicator.style.color = "#555";
                     }
                 })
                 .catch(error => {
                     console.error("Error:", error);
-                    isListening = false; // Reset state on error
+                    isListening = false;
                     button.textContent = "Start Listening";
                     button.style.backgroundColor = "#007BFF";
                     indicator.textContent = "Error starting/stopping transcription.";

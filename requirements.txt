@@ -1,3 +1,4 @@
 pyaudio
 google-cloud-speech
 openai
+flask-socketio

@@ -1,10 +1,13 @@
 from flask import Flask, request, jsonify, render_template
+from flask_socketio import SocketIO
+from speech_utils import transcribe_streaming
+from events import socketio
 import json
 from gpt_utils import get_gpt_response  # Function to interact with ChatGPT
 import threading
-from speech_utils import transcribe_streaming  # Import your transcription logic
 
 app = Flask(__name__, template_folder='templates')  # Specify the templates folder
+socketio.init_app(app)
 is_listening = False  # Global flag to track listening state
 
 
@@ -23,6 +26,10 @@ def start_listening():
         # Clear questions and answers file
         with open("transcriptions/questions_answers.json", "w") as file:
             file.write("[]")  # Overwrite with an empty JSON array
+
+        # Clear meeting minutes file
+        with open("transcriptions/meeting_minutes.json", "w") as file:
+            json.dump({"meeting_minutes": ""}, file)
 
         # Start the transcription thread
         threading.Thread(target=transcribe_streaming).start()
@@ -100,5 +107,18 @@ def get_action_items():
         return jsonify({"error": f"Error fetching action items: {str(e)}"}), 500
 
 
+@app.route('/get-meeting-minutes', methods=['GET'])
+def get_meeting_minutes():
+    """Return the current meeting minutes summary."""
+    try:
+        with open("transcriptions/meeting_minutes.json", "r") as file:
+            minutes = json.load(file)
+        return jsonify(minutes)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return jsonify({"meeting_minutes": ""}), 200
+    except Exception as e:
+        return jsonify({"error": f"Error fetching meeting minutes: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
-    app.run(port=8000, debug=True)
+    socketio.run(app, port=8000, debug=True)

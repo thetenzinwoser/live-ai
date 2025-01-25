@@ -50,3 +50,17 @@ def generate_action_items(transcription):
         return response.choices[0].message.content
     except Exception as e:
         return f"Error generating action items: {e}"
+
+def generate_meeting_minutes(transcription):
+    """Generate meeting minutes summary from the transcription."""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an AI assistant that creates concise meeting minutes from transcriptions. Format the summary in bullet points, organizing key discussion points, decisions, and main topics covered."},
+                {"role": "user", "content": f"Please create meeting minutes from this transcription, highlighting the main points discussed: {transcription}"}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error generating meeting minutes: {e}"

@@ -2,8 +2,9 @@ import pyaudio
 from google.cloud import speech
 import os
 import re
-from gpt_utils import get_gpt_response, generate_action_items
+from gpt_utils import get_gpt_response, generate_action_items, generate_meeting_minutes
 import json
+from events import notify_frontend_update
 
 # Set start method for multiprocessing
 if __name__ == "__main__":
@@ -109,6 +110,15 @@ def save_action_items(action_items):
         print(f"Error saving action items: {e}")
 
 
+def save_meeting_minutes(minutes):
+    """Save meeting minutes to a JSON file."""
+    try:
+        with open("transcriptions/meeting_minutes.json", "w") as file:
+            json.dump({"meeting_minutes": minutes}, file, indent=4)
+    except Exception as e:
+        print(f"Error saving meeting minutes: {e}")
+
+
 def process_responses(responses):
     """Handle transcription responses and filter out duplicates."""
     global transcriptions, last_saved_segment
@@ -121,7 +131,7 @@ def process_responses(responses):
 
                 # Filter out duplicate or repeated phrases
                 if transcript != last_saved_segment:
-                    last_saved_segment = transcript  # Update last saved segment
+                    last_saved_segment = transcript
                     transcriptions.append(f"{transcript} (Confidence: {confidence:.2f})")
                     save_transcription_to_file(f"{transcript} (Confidence: {confidence:.2f})")
 
@@ -133,17 +143,21 @@ def process_responses(responses):
                     for question in questions:
                         print(f"Detected Question: {question}")
                         try:
-                            # Query GPT for an answer
                             answer = get_gpt_response(question, "\n".join(transcriptions))
                             print(f"Answer: {answer}")
-                            # Save the question and answer
                             save_question_and_answer(question, answer)
                         except Exception as e:
                             print(f"Error generating answer for question '{question}': {e}")
 
-                # Generate and save action items periodically
-                try:
-                    action_items = generate_action_items("\n".join(transcriptions))
-                    save_action_items(action_items)
-                except Exception as e:
-                    print(f"Error processing action items: {e}")
+                    # Generate and save action items and meeting minutes periodically
+                    try:
+                        action_items = generate_action_items("\n".join(transcriptions))
+                        save_action_items(action_items)
+                        
+                        meeting_minutes = generate_meeting_minutes("\n".join(transcriptions))
+                        save_meeting_minutes(meeting_minutes)
+                        
+                        # Notify frontend of new content
+                        notify_frontend_update()
+                    except Exception as e:
+                        print(f"Error processing updates: {e}")
