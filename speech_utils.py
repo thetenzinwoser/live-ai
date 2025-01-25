@@ -2,7 +2,7 @@ import pyaudio
 from google.cloud import speech
 import os
 import re
-from gpt_utils import get_gpt_response
+from gpt_utils import get_gpt_response, generate_action_items
 import json
 
 # Set start method for multiprocessing
@@ -100,9 +100,18 @@ def transcribe_streaming():
             continue  # Restart the loop to create a new session
 
 
+def save_action_items(action_items):
+    """Save action items to a JSON file."""
+    try:
+        with open("transcriptions/action_items.json", "w") as file:
+            json.dump({"action_items": action_items}, file, indent=4)
+    except Exception as e:
+        print(f"Error saving action items: {e}")
+
+
 def process_responses(responses):
     """Handle transcription responses and filter out duplicates."""
-    global transcriptions, last_saved_segment  # Use global to access in-memory storage
+    global transcriptions, last_saved_segment
 
     for response in responses:
         for result in response.results:
@@ -131,3 +140,10 @@ def process_responses(responses):
                             save_question_and_answer(question, answer)
                         except Exception as e:
                             print(f"Error generating answer for question '{question}': {e}")
+
+                # Generate and save action items periodically
+                try:
+                    action_items = generate_action_items("\n".join(transcriptions))
+                    save_action_items(action_items)
+                except Exception as e:
+                    print(f"Error processing action items: {e}")

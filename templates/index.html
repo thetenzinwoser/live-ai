@@ -85,6 +85,31 @@
             display: block;
             margin-bottom: 8px;
         }
+
+        #action-items-container {
+            margin-top: 30px;
+        }
+
+        .action-items {
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 24px;
+            text-align: left;
+            margin: 0 auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            white-space: pre-line;
+        }
+
+        .empty-state {
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 24px;
+            text-align: left;
+            margin: 0 auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -94,7 +119,12 @@
 
     <div id="qa-container">
         <h2>Questions and Answers</h2>
-        <div id="qa-list">No questions detected yet.</div>
+        <div id="qa-list" class="empty-state">No questions detected yet.</div>
+    </div>
+
+    <div id="action-items-container">
+        <h2>Action Items</h2>
+        <div id="action-items" class="action-items">No action items detected yet.</div>
     </div>
 
     <script>
@@ -106,6 +136,7 @@
                 .then(data => {
                     const qaList = document.getElementById("qa-list");
                     if (data.questions && data.questions.length > 0) {
+                        qaList.className = ""; // Remove empty-state class
                         qaList.innerHTML = ""; // Clear the list
                         data.questions.forEach(item => {
                             const questionEl = document.createElement("div");
@@ -117,6 +148,7 @@
                             qaList.appendChild(questionEl);
                         });
                     } else {
+                        qaList.className = "empty-state"; // Add empty-state class
                         qaList.textContent = "No questions detected yet.";
                     }
                 })
@@ -125,8 +157,27 @@
                 });
         }
 
-        // Poll the backend every 5 seconds for new questions
-        setInterval(fetchQuestions, 1000);
+        function fetchActionItems() {
+            fetch("/get-action-items")
+                .then(response => response.json())
+                .then(data => {
+                    const actionItemsEl = document.getElementById("action-items");
+                    if (data.action_items && data.action_items.trim()) {
+                        actionItemsEl.textContent = data.action_items;
+                    } else {
+                        actionItemsEl.textContent = "No action items detected yet.";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching action items:", error);
+                });
+        }
+
+        // Update the polling interval to include action items
+        setInterval(() => {
+            fetchQuestions();
+            fetchActionItems();
+        }, 1000);
 
         document.getElementById("start-listening").addEventListener("click", function () {
             const button = document.getElementById("start-listening");

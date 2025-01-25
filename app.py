@@ -87,5 +87,18 @@ def get_questions():
         return jsonify({"error": f"Error fetching questions: {str(e)}"}), 500
 
 
+@app.route('/get-action-items', methods=['GET'])
+def get_action_items():
+    """Return the current list of action items."""
+    try:
+        with open("transcriptions/action_items.json", "r") as file:
+            action_items = json.load(file)
+        return jsonify(action_items)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return jsonify({"action_items": ""}), 200
+    except Exception as e:
+        return jsonify({"error": f"Error fetching action items: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
     app.run(port=8000, debug=True)
