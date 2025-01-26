@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO
-from speech_utils import transcribe_streaming
+import speech_utils  # Import the whole module
 from events import socketio
 import json
 from gpt_utils import get_gpt_response  # Function to interact with ChatGPT
@@ -25,14 +25,18 @@ def start_listening():
 
         # Clear questions and answers file
         with open("transcriptions/questions_answers.json", "w") as file:
-            file.write("[]")  # Overwrite with an empty JSON array
+            json.dump([], file)  # Initialize with empty array
+
+        # Clear action items file
+        with open("transcriptions/action_items.json", "w") as file:
+            json.dump({"action_items": ""}, file)  # Initialize with empty string
 
         # Clear meeting minutes file
         with open("transcriptions/meeting_minutes.json", "w") as file:
-            json.dump({"meeting_minutes": ""}, file)
+            json.dump({"meeting_minutes": ""}, file)  # Initialize with empty string
 
         # Start the transcription thread
-        threading.Thread(target=transcribe_streaming).start()
+        threading.Thread(target=speech_utils.transcribe_streaming).start()
 
         return jsonify({"message": "Listening started, previous session cleared!"})
     else:
@@ -43,8 +47,11 @@ def start_listening():
 def stop_listening():
     """Stop listening for transcription."""
     global is_listening
-    is_listening = False
-    return jsonify({"message": "Listening stopped. Data retained until next session starts."})
+    if is_listening:
+        is_listening = False
+        speech_utils.stop_transcription()  # Add this line to stop the transcription
+        return jsonify({"message": "Listening stopped. Data retained until next session starts."})
+    return jsonify({"message": "Already stopped."})
 
 
 @app.route('/')

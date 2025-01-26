@@ -5,6 +5,7 @@ import re
 from gpt_utils import get_gpt_response, generate_action_items, generate_meeting_minutes
 import json
 from events import notify_frontend_update
+import threading
 
 # Set start method for multiprocessing
 if __name__ == "__main__":
@@ -15,6 +16,7 @@ transcriptions = []  # To store all transcriptions in memory
 recent_transcriptions = []  # Cache to store recent transcriptions
 CACHE_LIMIT = 10  # Limit the cache size to the last 10 phrases
 last_saved_segment = ""  # To track the last saved transcription
+should_continue = threading.Event()  # Add this event flag
 
 
 def save_transcription_to_file(transcription):
@@ -62,43 +64,49 @@ def detect_questions(transcription):
 
 
 def transcribe_streaming():
-    """Stream and transcribe audio in real-time without diarization."""
+    """Stream and transcribe audio in real-time."""
+    should_continue.set()  # Set the flag to True when starting
     client = speech.SpeechClient()
 
     def start_stream():
-        """Inner function to start the streaming session."""
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
             sample_rate_hertz=16000,
             language_code="en-US",
-            enable_automatic_punctuation=True  # Enable punctuation for readability
+            enable_automatic_punctuation=True
         )
         streaming_config = speech.StreamingRecognitionConfig(config=config)
 
-        # Set up microphone input
         p = pyaudio.PyAudio()
         stream = p.open(format=pyaudio.paInt16,
-                        channels=1,
-                        rate=16000,
-                        input=True,
-                        frames_per_buffer=1024)
+                       channels=1,
+                       rate=16000,
+                       input=True,
+                       frames_per_buffer=1024)
 
         def generator():
-            while True:
+            while should_continue.is_set():  # Check the flag in the generator
                 yield stream.read(1024)
+            # Clean up when stopped
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
 
-        # Send audio chunks to Google Cloud and get responses
-        requests = (speech.StreamingRecognizeRequest(audio_content=chunk) for chunk in generator())
+        requests = (speech.StreamingRecognizeRequest(audio_content=chunk) 
+                   for chunk in generator())
         return client.streaming_recognize(config=streaming_config, requests=requests)
 
-    while True:  # Loop to restart the session
+    while should_continue.is_set():  # Check the flag in the main loop
         try:
             print("Starting new session...")
             responses = start_stream()
-            process_responses(responses)  # Process the transcription responses
+            process_responses(responses)
         except Exception as e:
-            print(f"Stream ended: {e}. Restarting...")
-            continue  # Restart the loop to create a new session
+            print(f"Stream ended: {e}")
+            if should_continue.is_set():  # Only continue if not stopped
+                continue
+            else:
+                break
 
 
 def save_action_items(action_items):
@@ -161,3 +169,8 @@ def process_responses(responses):
                         notify_frontend_update()
                     except Exception as e:
                         print(f"Error processing updates: {e}")
+
+
+def stop_transcription():
+    """Stop the transcription process."""
+    should_continue.clear()  # Clear the flag to stop the transcription

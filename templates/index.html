@@ -4,22 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live AI - Active Listening</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            padding: 50px;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            padding: 48px 24px;
             background-color: #f3f3f3;
-            max-width: 600px;
+            max-width: 800px;
             margin: auto;
+            line-height: 1.5;
         }
 
         #start-listening {
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             color: white;
             background-color: #007BFF;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             transition: background-color 0.5s ease, transform 0.2s ease;
         }
@@ -30,112 +37,254 @@
         }
 
         #indicator {
-            margin: 20px 0;
-            font-size: 18px;
+            margin: 0;
+            font-size: 16px;
             color: #555;
         }
 
-        #question-input {
-            width: 80%;
-            padding: 10px;
-            font-size: 16px;
-            margin: 20px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        #ask-ai {
-            padding: 10px 20px;
-            font-size: 16px;
-            color: white;
-            background-color: #28a745;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.5s ease, transform 0.2s ease;
-        }
-
-        #ask-ai:hover {
-            background-color: #218838;
-            transform: scale(1.05);
-        }
-
-        #qa-container {
-            margin-top: 30px;
-        }
-
-        #qa-list {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .qa-item {
-            background-color: #ffffff;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 24px;
-            text-align: left;
-            /* max-width: 600px; */
-            margin: 0 auto;
+        /* Tab Styles */
+        .tabs {
+            margin-top: 48px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .tab-button {
+            padding: 24px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            flex: 1;
+            text-align: center;
+        }
+
+        .tab-button:hover {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+
+        .tab-button.active {
+            background-color: white;
+            color: #007bff;
+            border-bottom: 3px solid #007bff;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 24px;
+            background: white;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Content Styles */
+        .qa-item {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
         }
 
         .qa-item strong {
             display: block;
             margin-bottom: 8px;
-        }
-
-        #action-items-container {
-            margin-top: 30px;
-        }
-
-        .action-items {
-            background-color: #ffffff;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 24px;
-            text-align: left;
-            margin: 0 auto;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            white-space: pre-line;
+            color: #495057;
         }
 
         .empty-state {
-            background-color: #ffffff;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            text-align: center;
+            padding: 48px 24px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .content-container {
+            white-space: normal;
+            line-height: 1.6;
+        }
+
+        .content-container h1,
+        .content-container h2,
+        .content-container h3 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+
+        .content-container ul,
+        .content-container ol {
+            padding-left: 24px;
+            margin: 24px 0;
+        }
+
+        .content-container li {
+            margin: 12px 0;
+        }
+
+        .content-container p {
+            margin: 24px 0;
+        }
+
+        .content-container code {
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        }
+
+        .content-container pre {
+            background: #f8f9fa;
             padding: 24px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 24px 0;
+        }
+
+        .content-container blockquote {
+            border-left: 4px solid #007bff;
+            margin: 24px 0;
+            padding-left: 24px;
+            color: #6c757d;
+        }
+
+        .content-container table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 24px 0;
+        }
+
+        .content-container th,
+        .content-container td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
             text-align: left;
-            margin: 0 auto;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .content-container th {
+            background: #f8f9fa;
+        }
+
+        /* QA specific styles */
+        .qa-item .question {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 24px;
+            font-size: 16px;
+        }
+
+        .qa-item .answer {
+            color: #495057;
+        }
+
+        /* Animation for tab transitions */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .tab-content.active {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        /* Add new styles for the button container */
+        .button-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;  /* Space between button and text */
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
     <h1>Active Listening Demo</h1>
-    <button id="start-listening">Start Listening</button>
-    <div id="indicator">Click the button to start transcription.</div>
-
-    <div id="qa-container">
-        <h2>Questions and Answers</h2>
-        <div id="qa-list" class="empty-state">No questions detected yet.</div>
+    <div class="button-container">
+        <button id="start-listening">Start Listening</button>
+        <div id="indicator">Click the button to start transcription.</div>
     </div>
 
-    <div id="action-items-container">
-        <h2>Action Items</h2>
-        <div id="action-items" class="action-items">No action items detected yet.</div>
-    </div>
+    <div class="tabs">
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="minutes">Meeting Minutes</button>
+            <button class="tab-button" data-tab="questions">Q&A</button>
+            <button class="tab-button" data-tab="actions">Action Items</button>
+        </div>
 
-    <div id="meeting-minutes-container">
-        <h2>Meeting Minutes</h2>
-        <div id="meeting-minutes" class="action-items">No meeting minutes generated yet.</div>
+        <div id="minutes" class="tab-content active">
+            <div id="meeting-minutes" class="content-container">
+                <div class="empty-state">No meeting minutes generated yet.</div>
+            </div>
+        </div>
+
+        <div id="questions" class="tab-content">
+            <div id="qa-list" class="content-container">
+                <div class="empty-state">No questions detected yet.</div>
+            </div>
+        </div>
+
+        <div id="actions" class="tab-content">
+            <div id="action-items" class="content-container">
+                <div class="empty-state">No action items detected yet.</div>
+            </div>
+        </div>
     </div>
 
     <script>
         let isListening = false;
         const socket = io();
+
+        // Configure marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: true,
+            sanitize: false,
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        // Safely convert markdown to HTML
+        function renderMarkdown(content) {
+            try {
+                return marked.parse(content);
+            } catch (e) {
+                console.error('Markdown parsing error:', e);
+                return content;
+            }
+        }
+
+        // Tab functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and contents
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                const tabId = button.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
 
         // Listen for content updates
         socket.on('content_update', function() {
@@ -150,20 +299,18 @@
                 .then(data => {
                     const qaList = document.getElementById("qa-list");
                     if (data.questions && data.questions.length > 0) {
-                        qaList.className = "";
                         qaList.innerHTML = "";
                         data.questions.forEach(item => {
                             const questionEl = document.createElement("div");
                             questionEl.className = "qa-item";
                             questionEl.innerHTML = `
-                                <strong>${item.question}</strong><br>
-                                ${item.answer}
+                                <div class="question">${item.question}</div>
+                                <div class="answer">${renderMarkdown(item.answer)}</div>
                             `;
                             qaList.appendChild(questionEl);
                         });
                     } else {
-                        qaList.className = "empty-state";
-                        qaList.textContent = "No questions detected yet.";
+                        qaList.innerHTML = '<div class="empty-state">No questions detected yet.</div>';
                     }
                 })
                 .catch(error => {
@@ -177,9 +324,9 @@
                 .then(data => {
                     const actionItemsEl = document.getElementById("action-items");
                     if (data.action_items && data.action_items.trim()) {
-                        actionItemsEl.textContent = data.action_items;
+                        actionItemsEl.innerHTML = renderMarkdown(data.action_items);
                     } else {
-                        actionItemsEl.textContent = "No action items detected yet.";
+                        actionItemsEl.innerHTML = '<div class="empty-state">No action items detected yet.</div>';
                     }
                 })
                 .catch(error => {
@@ -193,9 +340,9 @@
                 .then(data => {
                     const minutesEl = document.getElementById("meeting-minutes");
                     if (data.meeting_minutes && data.meeting_minutes.trim()) {
-                        minutesEl.textContent = data.meeting_minutes;
+                        minutesEl.innerHTML = renderMarkdown(data.meeting_minutes);
                     } else {
-                        minutesEl.textContent = "No meeting minutes generated yet.";
+                        minutesEl.innerHTML = '<div class="empty-state">No meeting minutes generated yet.</div>';
                     }
                 })
                 .catch(error => {
