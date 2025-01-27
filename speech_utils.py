@@ -35,7 +35,22 @@ def save_question_and_answer(question, answer):
     except (FileNotFoundError, json.JSONDecodeError):
         qa_data = []
 
-    qa_data.append({"question": question, "answer": answer})
+    # Extract timestamp from the transcription line containing the question
+    timestamp = "00:00"
+    for line in transcriptions:
+        if question in line:
+            # Extract timestamp using regex
+            match = re.search(r'\(Time Stamp: (\d{2}:\d{2})\)', line)
+            if match:
+                timestamp = match.group(1)
+                break
+
+    # Insert new question at the beginning of the array
+    qa_data.insert(0, {
+        "question": question,
+        "answer": answer,
+        "timestamp": timestamp
+    })
 
     with open("transcriptions/questions_answers.json", "w") as file:
         json.dump(qa_data, file, indent=4)
