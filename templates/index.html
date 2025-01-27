@@ -17,6 +17,7 @@
             max-width: 800px;
             margin: auto;
             line-height: 1.5;
+            transition: background-color 0.3s ease;
         }
 
         #start-listening {
@@ -209,6 +210,29 @@
             align-items: center;
             gap: 16px;  /* Space between button and text */
         }
+
+        /* Loading spinner and pending state styles */
+        .loading-spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #007bff;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        .pending-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #6c757d;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -293,7 +317,19 @@
             fetchMeetingMinutes();
         });
 
+        // Add these new functions to show/hide loading state
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `
+                <div class="pending-state">
+                    <div class="loading-spinner"></div>
+                    <p>Generating content...</p>
+                </div>
+            `;
+        }
+
         function fetchQuestions() {
+            showLoading("qa-list");
             fetch("/get-questions")
                 .then(response => response.json())
                 .then(data => {
@@ -315,10 +351,12 @@
                 })
                 .catch(error => {
                     console.error("Error fetching questions:", error);
+                    document.getElementById("qa-list").innerHTML = '<div class="empty-state">Error loading questions.</div>';
                 });
         }
 
         function fetchActionItems() {
+            showLoading("action-items");
             fetch("/get-action-items")
                 .then(response => response.json())
                 .then(data => {
@@ -331,10 +369,12 @@
                 })
                 .catch(error => {
                     console.error("Error fetching action items:", error);
+                    document.getElementById("action-items").innerHTML = '<div class="empty-state">Error loading action items.</div>';
                 });
         }
 
         function fetchMeetingMinutes() {
+            showLoading("meeting-minutes");
             fetch("/get-meeting-minutes")
                 .then(response => response.json())
                 .then(data => {
@@ -347,6 +387,7 @@
                 })
                 .catch(error => {
                     console.error("Error fetching meeting minutes:", error);
+                    document.getElementById("meeting-minutes").innerHTML = '<div class="empty-state">Error loading meeting minutes.</div>';
                 });
         }
 
@@ -368,11 +409,13 @@
                         button.style.backgroundColor = "#28a745";
                         indicator.textContent = "Listening... Transcribing in progress.";
                         indicator.style.color = "#28a745";
+                        document.body.style.backgroundColor = "#e8f5e9";
                     } else {
                         button.textContent = "Start Listening";
                         button.style.backgroundColor = "#007BFF";
                         indicator.textContent = "Transcription stopped.";
                         indicator.style.color = "#555";
+                        document.body.style.backgroundColor = "#f3f3f3";
                     }
                 })
                 .catch(error => {

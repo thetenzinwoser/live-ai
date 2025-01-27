@@ -6,6 +6,7 @@ from gpt_utils import get_gpt_response, generate_action_items, generate_meeting_
 import json
 from events import notify_frontend_update
 import threading
+import time  # Add this import at the top
 
 # Set start method for multiprocessing
 if __name__ == "__main__":
@@ -17,6 +18,7 @@ recent_transcriptions = []  # Cache to store recent transcriptions
 CACHE_LIMIT = 10  # Limit the cache size to the last 10 phrases
 last_saved_segment = ""  # To track the last saved transcription
 should_continue = threading.Event()  # Add this event flag
+start_time = None  # Add this variable to track start time
 
 
 def save_transcription_to_file(transcription):
@@ -65,7 +67,9 @@ def detect_questions(transcription):
 
 def transcribe_streaming():
     """Stream and transcribe audio in real-time."""
-    should_continue.set()  # Set the flag to True when starting
+    global start_time  # Add this line
+    should_continue.set()
+    start_time = time.time()  # Set the start time when transcription begins
     client = speech.SpeechClient()
 
     def start_stream():
@@ -137,14 +141,21 @@ def process_responses(responses):
                 transcript = result.alternatives[0].transcript
                 confidence = result.alternatives[0].confidence
 
+                # Calculate timestamp
+                elapsed_time = int(time.time() - start_time)
+                minutes = elapsed_time // 60
+                seconds = elapsed_time % 60
+                timestamp = f"(Time Stamp: {minutes:02d}:{seconds:02d})"
+
                 # Filter out duplicate or repeated phrases
                 if transcript != last_saved_segment:
                     last_saved_segment = transcript
-                    transcriptions.append(f"{transcript} (Confidence: {confidence:.2f})")
-                    save_transcription_to_file(f"{transcript} (Confidence: {confidence:.2f})")
+                    formatted_line = f"{transcript} (Confidence: {confidence:.2f}) {timestamp}"
+                    transcriptions.append(formatted_line)
+                    save_transcription_to_file(formatted_line)
 
                     # Print the transcription to the console
-                    print(f"New line added: {transcript} (Confidence: {confidence:.2f})")
+                    print(f"New line added: {formatted_line}")
 
                     # Detect and handle questions
                     questions = detect_questions(transcript)
