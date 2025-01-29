@@ -3,8 +3,8 @@ from flask_socketio import SocketIO
 import speech_utils  # Import the whole module
 from events import socketio
 import json
-from gpt_utils import get_gpt_response  # Function to interact with ChatGPT
 import threading
+from gpt_utils import get_gpt_response
 
 app = Flask(__name__, template_folder='templates')  # Specify the templates folder
 socketio.init_app(app)

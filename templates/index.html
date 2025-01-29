@@ -577,9 +577,14 @@
                     const qaList = document.getElementById("qa-list");
                     if (data.questions && data.questions.length > 0) {
                         qaList.innerHTML = "";
-                        data.questions.forEach(item => {
+                        data.questions.forEach((item, index) => {
                             const questionEl = document.createElement("div");
                             questionEl.className = "qa-item";
+                            
+                            // Add 'active' class to most recent question
+                            if (index === 0) {
+                                questionEl.classList.add('active');
+                            }
                             
                             questionEl.innerHTML = `
                                 <div class="question-header">
@@ -589,10 +594,8 @@
                                 <div class="answer">${renderMarkdown(item.answer)}</div>
                             `;
 
-                            // Add click event listener for accordion behavior
-                            const header = questionEl.querySelector('.question-header');
-                            header.addEventListener('click', () => {
-                                // Toggle active class
+                            // Simple click handler
+                            questionEl.querySelector('.question-header').addEventListener('click', () => {
                                 questionEl.classList.toggle('active');
                             });
 
