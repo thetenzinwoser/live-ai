@@ -11,14 +11,49 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def get_gpt_response(question, context=""):
     """
-    Wrapper function to make it easier to query GPT with a question
-    and optional context (like transcription).
+    Get a response from GPT for chat messages, incorporating meeting context when available.
     """
     try:
-        response = analyze_with_gpt(context, question)
-        return response
+        messages = [
+            {
+                "role": "system", 
+                "content": """You are Pai, an AI assistant helping with meeting discussions. 
+                You have access to the live meeting transcription and can reference it to provide context-aware responses.
+                Use Markdown formatting for better readability:
+                - ## for headers
+                - * for bullet points
+                - ` for code
+                - ** for emphasis
+                
+                Keep responses concise but informative. If referencing the meeting, cite specific parts.
+                If there's no meeting context or the question is unrelated, respond generally but helpfully."""
+            }
+        ]
+
+        # Add context if available
+        if context.strip():
+            messages.append({
+                "role": "system",
+                "content": f"Here is the current meeting transcription for context:\n{context}"
+            })
+
+        # Add user question
+        messages.append({
+            "role": "user",
+            "content": question
+        })
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        return response.choices[0].message.content
     except Exception as e:
-        return f"Error processing question: {e}"
+        print(f"Error in get_gpt_response: {e}")
+        return f"I apologize, but I encountered an error while processing your request. Please try again."
 
 
 # THIS IS FOR THE QUESTION AND ANSWER SECTION

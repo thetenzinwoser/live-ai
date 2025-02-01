@@ -5,6 +5,7 @@ from events import socketio
 import json
 import threading
 from gpt_utils import get_gpt_response
+from speech_utils import get_full_transcription
 
 app = Flask(__name__, template_folder='templates')  # Specify the templates folder
 socketio.init_app(app)
@@ -88,17 +89,17 @@ def ask_ai():
         return jsonify({"error": f"Error generating GPT response: {str(e)}"}), 500
 
 
-@app.route('/get-questions', methods=['GET'])
+@app.route('/get-questions')
 def get_questions():
-    """Return detected questions and their GPT answers."""
     try:
-        with open("transcriptions/questions_answers.json", "r") as file:
+        with open('transcriptions/questions_answers.json', 'r') as file:
             qa_data = json.load(file)
-        return jsonify({"questions": qa_data})
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"questions": []}), 200
+            return jsonify({'questions': qa_data})
+    except FileNotFoundError:
+        return jsonify({'questions': []})
     except Exception as e:
-        return jsonify({"error": f"Error fetching questions: {str(e)}"}), 500
+        print(f"Error reading questions: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/get-action-items', methods=['GET'])
@@ -125,6 +126,33 @@ def get_meeting_minutes():
         return jsonify({"meeting_minutes": ""}), 200
     except Exception as e:
         return jsonify({"error": f"Error fetching meeting minutes: {str(e)}"}), 500
+
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    try:
+        data = request.get_json()
+        if not data or 'message' not in data:
+            return jsonify({'error': 'No message provided'}), 400
+
+        user_message = data['message']
+        
+        # Get current transcription context
+        context = get_full_transcription()
+        
+        # Get response from GPT
+        response = get_gpt_response(user_message, context)
+        
+        return jsonify({
+            'response': response
+        })
+
+    except Exception as e:
+        print(f"Error in chat endpoint: {e}")
+        return jsonify({
+            'error': 'Internal server error',
+            'response': 'Sorry, there was an error processing your message.'
+        }), 500
 
 
 if __name__ == "__main__":
