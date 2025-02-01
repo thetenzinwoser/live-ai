@@ -553,8 +553,8 @@
 
         // Listen for content updates
         socket.on('content_update', function() {
+            console.log("Received content update event");  // Add logging
             fetchQuestions();
-            fetchActionItems();
             fetchMeetingMinutes();
         });
 

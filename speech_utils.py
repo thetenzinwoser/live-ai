@@ -76,7 +76,7 @@ def detect_questions(transcription):
     for line in transcription.splitlines():
         line = line.strip()
         # Simple heuristic to detect questions
-        if line.endswith("?") or re.match(r"^(What|Why|How|When|Where|Who)\b", line, re.IGNORECASE):
+        if line.endswith("?") or re.match(r"^(Is|What|Why|How|When|Where|Who|Do|Does|Did|Will|Would|Should|Can|Could|May|Might|Must|Should|Would|Could|May|Might|Must)\b", line, re.IGNORECASE):
             questions.append(line)
     return questions
 
@@ -186,9 +186,6 @@ def process_responses(responses):
 
                     # Generate and save action items and meeting minutes periodically
                     try:
-                        action_items = generate_action_items("\n".join(transcriptions))
-                        save_action_items(action_items)
-                        
                         meeting_minutes = generate_meeting_minutes("\n".join(transcriptions))
                         save_meeting_minutes(meeting_minutes)
                         
