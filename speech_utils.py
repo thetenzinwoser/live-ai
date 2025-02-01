@@ -2,7 +2,7 @@ import pyaudio
 from google.cloud import speech
 import os
 import re
-from gpt_utils import generate_action_items, generate_meeting_minutes
+from gpt_utils import generate_meeting_minutes
 import json
 from events import notify_frontend_update
 import threading

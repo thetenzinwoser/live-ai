@@ -35,21 +35,6 @@ def analyze_with_gpt(transcription, query):
         return response.choices[0].message.content
     except Exception as e:
         return f"Error generating feedback: {e}"
-    
-# THIS IS FOR THE ACTION ITEMS
-def generate_action_items(transcription):
-    """Generate action items from the transcription."""
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are an AI assistant that identifies and extracts action items from meeting transcriptions. Use as little words as possible. Only create action items based off of things explicitly mentioned in the transcription. Do not use markdown headers in your answers. The current meeting is being transcribed in real time. Use Markdown formatting: ## for headers, 1. for numbered lists, - [ ] for unchecked boxes, - [x] for checked boxes, * for bullet points, and ** for emphasis."},
-                {"role": "user", "content": f"Please analyze this meeting transcription and list all action items mentioned using checkboxes and numbered lists where appropriate: {transcription}"}
-            ]
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"Error generating action items: {e}"
 
 # THIS IS FOR THE MEETING MINUTES
 def generate_meeting_minutes(transcription):
