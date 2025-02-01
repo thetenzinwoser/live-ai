@@ -47,10 +47,10 @@
         /* Tab Styles */
         .tabs {
             margin-top: 48px;
-            background: white;
+            /* background: white; */
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
         }
 
         .tab-buttons {
@@ -87,7 +87,7 @@
         .tab-content {
             display: none;
             padding: 24px;
-            background: white;
+            /* background: white; */
         }
 
         .tab-content.active {
@@ -644,8 +644,8 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: white;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            /* background: white; */
+            /* box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); */
             padding: 16px;
         }
 
@@ -698,6 +698,49 @@
         #chat-view, #qa-view {
             padding-bottom: 160px; /* Account for both chat input and bottom controls */
         }
+
+        /* Add new transcript styles */
+        #transcript-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 16px;
+        }
+
+        .transcript-line {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .transcript-bubble {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .transcript-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: #64748b;
+            padding: 0 8px;
+        }
+
+        .transcript-time {
+            font-weight: 500;
+        }
+
+        .transcript-confidence {
+            padding: 2px 6px;
+            background: #f1f5f9;
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
@@ -724,6 +767,16 @@
             </div>
         </div>
 
+        <div id="transcript-view" class="tab-content">
+            <div id="transcript-messages">
+                <div class="empty-state">
+                    <div class="empty-icon">🎙️</div>
+                    <h3>No Transcript Yet</h3>
+                    <p>Start recording to see the conversation appear here</p>
+                </div>
+            </div>
+        </div>
+
         <div class="bottom-controls">
             <div class="controls-wrapper">
                 <div class="button-container">
@@ -734,6 +787,7 @@
                 <div class="tab-buttons">
                     <button class="tab-button active" data-tab="chat-view">Chat</button>
                     <button class="tab-button" data-tab="qa-view">Q&A</button>
+                    <button class="tab-button" data-tab="transcript-view">Transcript</button>
                 </div>
             </div>
         </div>
@@ -775,18 +829,19 @@
         // Tab functionality
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => {
-                // Remove active class from all buttons and contents
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.querySelectorAll('.tab-button').forEach(btn => 
+                    btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => 
+                    content.classList.remove('active'));
                 
-                // Add active class to clicked button and corresponding content
                 button.classList.add('active');
                 const tabId = button.getAttribute('data-tab');
                 document.getElementById(tabId).classList.add('active');
 
-                // Fetch questions when switching to Q&A tab
                 if (tabId === 'qa-view') {
                     fetchQuestions();
+                } else if (tabId === 'transcript-view') {
+                    fetchTranscript();
                 }
             });
         });
@@ -794,10 +849,9 @@
         // Listen for content updates
         socket.on('content_update', function() {
             console.log("Received content update event");
-            const qaTab = document.querySelector('[data-tab="qa-view"]');
-            if (qaTab.classList.contains('active')) {
-                fetchQuestions();
-            }
+            const transcriptTab = document.querySelector('[data-tab="transcript-view"]');
+            // Always fetch new transcript data when we get an update, regardless of active tab
+            fetchTranscript();
         });
 
         // Add these new functions to show/hide loading state
@@ -1154,6 +1208,45 @@
                 handleSendMessage();
             }
         });
+
+        // Add this to your existing JavaScript
+        function fetchTranscript() {
+            fetch("/get-transcript")
+                .then(response => response.json())
+                .then(data => {
+                    const transcriptContainer = document.getElementById("transcript-messages");
+                    if (data.lines && data.lines.length > 0) {
+                        // Only update if we have new content
+                        const newContent = data.lines.map(line => {
+                            const timestampMatch = line.match(/\(Time Stamp: ([\d:]+)\)/);
+                            const timestamp = timestampMatch ? timestampMatch[1] : "00:00";
+                            
+                            // Clean the text (remove metadata)
+                            const cleanText = line
+                                .replace(/\(Time Stamp: [\d:]+\)/, '')
+                                .replace(/\(Confidence: [\d.]+\)/, '')
+                                .trim();
+
+                            return `
+                                <div class="transcript-line" style="animation: fadeIn 0.3s ease-out">
+                                    <div class="transcript-meta">
+                                        <span class="transcript-time">${timestamp}</span>
+                                    </div>
+                                    <div class="transcript-bubble">
+                                        ${cleanText}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        transcriptContainer.innerHTML = newContent;
+                        
+                        // Scroll to bottom for new content
+                        transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+                    }
+                })
+                .catch(error => console.error("Error fetching transcript:", error));
+        }
     </script>
 </body>
 </html>

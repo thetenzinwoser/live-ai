@@ -155,5 +155,19 @@ def chat():
         }), 500
 
 
+@app.route('/get-transcript')
+def get_transcript():
+    try:
+        with open('transcriptions/live_transcription.txt', 'r') as file:
+            lines = file.readlines()
+            # Return lines in reverse chronological order
+            return jsonify({'lines': lines[::-1]})
+    except FileNotFoundError:
+        return jsonify({'lines': []})
+    except Exception as e:
+        print(f"Error reading transcript: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == "__main__":
     socketio.run(app, port=8000, debug=True)
