@@ -267,10 +267,10 @@
         }
 
         .waveform .bar {
-            width: 2px;
+            width: 6px;
             height: 100%;
             background: linear-gradient(to bottom, #9C27B0, #6200EA);
-            border-radius: 2px;
+            border-radius: 6px;
             transform-origin: bottom;
             transform: scaleY(0.1);
             transition: transform 0.05s ease, background 0.3s ease;
@@ -278,7 +278,7 @@
 
         /* Add 15 bars to the waveform div */
         .waveform {
-            --bar-count: 15;
+            --bar-count: 5;
         }
 
         @keyframes glow {
@@ -338,7 +338,7 @@
             margin-left: 12px;
             background: rgba(0, 0, 0, 0.05);
             padding: 8px;
-            border-radius: 16px;
+            border-radius: 8px;
             opacity: 0;
             transform: translateX(-20px);
             transition: all 0.3s ease-in-out;
@@ -711,7 +711,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            max-width: 85%;
+            max-width: 100%;
             animation: fadeIn 0.3s ease;
         }
 
@@ -745,11 +745,8 @@
 </head>
 <body>
     <div id="chat-container">
-        <div class="header">
-            <h1>Pai</h1>
-        </div>
 
-        <div id="chat-view" class="tab-content active">
+        <div id="chat-view" class="tab-content">
             <div id="chat-messages">
                 <div class="empty-state">Start a conversation with Pai!</div>
             </div>
@@ -767,7 +764,7 @@
             </div>
         </div>
 
-        <div id="transcript-view" class="tab-content">
+        <div id="transcript-view" class="tab-content active">
             <div id="transcript-messages">
                 <div class="empty-state">
                     <div class="empty-icon">🎙️</div>
@@ -785,9 +782,9 @@
                 </div>
                 <div id="indicator">Click to start transcription.</div>
                 <div class="tab-buttons">
-                    <button class="tab-button active" data-tab="chat-view">Chat</button>
+                    <button class="tab-button active" data-tab="transcript-view">Transcript</button>
+                    <button class="tab-button" data-tab="chat-view">Chat</button>
                     <button class="tab-button" data-tab="qa-view">Q&A</button>
-                    <button class="tab-button" data-tab="transcript-view">Transcript</button>
                 </div>
             </div>
         </div>
@@ -936,7 +933,7 @@
         function createBars() {
             const waveform = document.getElementById('waveform');
             waveform.innerHTML = ''; // Clear existing bars
-            const barCount = 15; // Must be odd number for center symmetry
+            const barCount = 9; // Must be odd number for center symmetry
             
             // Create bars in order from center outward
             const centerIndex = Math.floor(barCount / 2);
