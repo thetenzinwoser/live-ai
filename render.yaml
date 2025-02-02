@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: live-ai
+    env: python
+    buildCommand: pip install --user -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
