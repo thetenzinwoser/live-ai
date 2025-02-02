@@ -1,7 +1,8 @@
-pyaudio
 google-cloud-speech
 openai
-flask
 flask-socketio
 Flask-Session
 python-dotenv
+soundfile
+sounddevice==0.4.6
+numpy

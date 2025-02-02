@@ -1,4 +1,4 @@
-import pyaudio
+import sounddevice as sd
 from google.cloud import speech
 import os
 import re
@@ -95,37 +95,34 @@ def transcribe_streaming(user_dir):
     state.start_time = time.time()
     client = speech.SpeechClient()
 
-    def start_stream():
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
-            language_code="en-US",
-            enable_automatic_punctuation=True
-        )
-        streaming_config = speech.StreamingRecognitionConfig(config=config)
-
-        p = pyaudio.PyAudio()
-        stream = p.open(format=pyaudio.paInt16,
-                       channels=1,
-                       rate=16000,
-                       input=True,
-                       frames_per_buffer=1024)
-
-        def generator():
+    def record_audio():
+        samplerate = 16000
+        channels = 1
+        dtype = 'int16'
+        
+        with sd.InputStream(samplerate=samplerate, channels=channels, dtype=dtype) as stream:
             while state.should_continue.is_set():
-                yield stream.read(1024)
-            stream.stop_stream()
-            stream.close()
-            p.terminate()
+                audio_chunk, overflowed = stream.read(1024)
+                if not overflowed:
+                    # Convert to bytes
+                    audio_data = audio_chunk.tobytes()
+                    yield audio_data
 
-        requests = (speech.StreamingRecognizeRequest(audio_content=chunk) 
-                   for chunk in generator())
-        return client.streaming_recognize(config=streaming_config, requests=requests)
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+        sample_rate_hertz=16000,
+        language_code="en-US",
+        enable_automatic_punctuation=True
+    )
+    
+    streaming_config = speech.StreamingRecognitionConfig(config=config)
 
     while state.should_continue.is_set():
         try:
             print(f"Starting new session for user directory: {user_dir}")
-            responses = start_stream()
+            requests = (speech.StreamingRecognizeRequest(audio_content=chunk) 
+                       for chunk in record_audio())
+            responses = client.streaming_recognize(streaming_config, requests)
             process_responses(user_dir, responses)
         except Exception as e:
             print(f"Stream ended: {e}")
