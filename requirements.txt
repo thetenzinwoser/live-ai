@@ -1,7 +1,7 @@
-PyAudio==0.2.13; platform_system!="Linux"
-PyAudio==0.2.13; platform_system=="Linux" and platform_machine=="x86_64"
+pyaudio
 google-cloud-speech
 openai
+flask
 flask-socketio
 Flask-Session
 python-dotenv
