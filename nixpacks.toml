@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["python312", "portaudio"]
+nixPkgs = ["python312", "portaudio", "alsa-lib", "alsa-utils"]
