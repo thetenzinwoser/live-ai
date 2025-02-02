@@ -6,7 +6,7 @@ from gpt_utils import generate_meeting_minutes
 import json
 from events import notify_frontend_update
 import threading
-import time  # Add this import at the top
+import time
 from gpt_utils import get_gpt_response
 
 # Set start method for multiprocessing
@@ -14,53 +14,61 @@ if __name__ == "__main__":
     os.set_start_method("spawn")
 
 # Global variables for in-memory transcription
-transcriptions = []  # To store all transcriptions in memory
-recent_transcriptions = []  # Cache to store recent transcriptions
-CACHE_LIMIT = 10  # Limit the cache size to the last 10 phrases
-last_saved_segment = ""  # To track the last saved transcription
-should_continue = threading.Event()  # Add this event flag
-start_time = None  # Add this variable to track start time
+class TranscriptionState:
+    def __init__(self):
+        self.transcriptions = []
+        self.recent_transcriptions = []
+        self.last_saved_segment = ""
+        self.should_continue = threading.Event()
+        self.start_time = None
 
+# Dictionary to store per-user transcription states
+user_states = {}
 
-def save_transcription_to_file(transcription):
-    """Append the latest transcription to the file."""
-    with open("transcriptions/live_transcription.txt", "a") as f:  # Use "a" mode to append
+def get_user_state(user_dir):
+    """Get or create transcription state for a user"""
+    if user_dir not in user_states:
+        user_states[user_dir] = TranscriptionState()
+    return user_states[user_dir]
+
+def save_transcription_to_file(user_dir, transcription):
+    """Append the latest transcription to the user's file."""
+    filepath = os.path.join(user_dir, "live_transcription.txt")
+    with open(filepath, "a") as f:
         f.write(transcription + "\n")
 
-
-def save_question_and_answer(question, answer):
-    """Save detected questions and their GPT answers to a JSON file."""
+def save_question_and_answer(user_dir, question, answer):
+    """Save detected questions and their GPT answers to a user's JSON file."""
+    filepath = os.path.join(user_dir, "questions_answers.json")
     try:
-        with open("transcriptions/questions_answers.json", "r") as file:
+        with open(filepath, "r") as file:
             qa_data = json.load(file)
     except (FileNotFoundError, json.JSONDecodeError):
         qa_data = []
 
+    state = get_user_state(user_dir)
     # Extract timestamp from the transcription line containing the question
     timestamp = "00:00"
-    for line in transcriptions:
+    for line in state.transcriptions:
         if question in line:
-            # Extract timestamp using regex
             match = re.search(r'\(Time Stamp: (\d{2}:\d{2})\)', line)
             if match:
                 timestamp = match.group(1)
                 break
 
-    # Insert new question at the beginning of the array
     qa_data.insert(0, {
         "question": question,
         "answer": answer,
         "timestamp": timestamp
     })
 
-    with open("transcriptions/questions_answers.json", "w") as file:
+    with open(filepath, "w") as file:
         json.dump(qa_data, file, indent=4)
 
-
-def get_full_transcription():
-    """Return all transcriptions as a single string."""
-    return "\n".join(transcriptions)
-
+def get_full_transcription(user_dir):
+    """Return all transcriptions for a user as a single string."""
+    state = get_user_state(user_dir)
+    return "\n".join(state.transcriptions)
 
 def detect_questions(transcription):
     """
@@ -80,12 +88,11 @@ def detect_questions(transcription):
             questions.append(line)
     return questions
 
-
-def transcribe_streaming():
-    """Stream and transcribe audio in real-time."""
-    global start_time  # Add this line
-    should_continue.set()
-    start_time = time.time()  # Set the start time when transcription begins
+def transcribe_streaming(user_dir):
+    """Stream and transcribe audio in real-time for a specific user."""
+    state = get_user_state(user_dir)
+    state.should_continue.set()
+    state.start_time = time.time()
     client = speech.SpeechClient()
 
     def start_stream():
@@ -105,9 +112,8 @@ def transcribe_streaming():
                        frames_per_buffer=1024)
 
         def generator():
-            while should_continue.is_set():  # Check the flag in the generator
+            while state.should_continue.is_set():
                 yield stream.read(1024)
-            # Clean up when stopped
             stream.stop_stream()
             stream.close()
             p.terminate()
@@ -116,40 +122,39 @@ def transcribe_streaming():
                    for chunk in generator())
         return client.streaming_recognize(config=streaming_config, requests=requests)
 
-    while should_continue.is_set():  # Check the flag in the main loop
+    while state.should_continue.is_set():
         try:
-            print("Starting new session...")
+            print(f"Starting new session for user directory: {user_dir}")
             responses = start_stream()
-            process_responses(responses)
+            process_responses(user_dir, responses)
         except Exception as e:
             print(f"Stream ended: {e}")
-            if should_continue.is_set():  # Only continue if not stopped
+            if state.should_continue.is_set():
                 continue
             else:
                 break
 
-
-def save_action_items(action_items):
-    """Save action items to a JSON file."""
+def save_action_items(user_dir, action_items):
+    """Save action items to a user's JSON file."""
+    filepath = os.path.join(user_dir, "action_items.json")
     try:
-        with open("transcriptions/action_items.json", "w") as file:
+        with open(filepath, "w") as file:
             json.dump({"action_items": action_items}, file, indent=4)
     except Exception as e:
         print(f"Error saving action items: {e}")
 
-
-def save_meeting_minutes(minutes):
-    """Save meeting minutes to a JSON file."""
+def save_meeting_minutes(user_dir, minutes):
+    """Save meeting minutes to a user's JSON file."""
+    filepath = os.path.join(user_dir, "meeting_minutes.json")
     try:
-        with open("transcriptions/meeting_minutes.json", "w") as file:
+        with open(filepath, "w") as file:
             json.dump({"meeting_minutes": minutes}, file, indent=4)
     except Exception as e:
         print(f"Error saving meeting minutes: {e}")
 
-
-def process_responses(responses):
-    """Handle transcription responses and filter out duplicates."""
-    global transcriptions, last_saved_segment
+def process_responses(user_dir, responses):
+    """Handle transcription responses for a specific user."""
+    state = get_user_state(user_dir)
 
     for response in responses:
         for result in response.results:
@@ -157,44 +162,35 @@ def process_responses(responses):
                 transcript = result.alternatives[0].transcript
                 confidence = result.alternatives[0].confidence
 
-                # Calculate timestamp
-                elapsed_time = int(time.time() - start_time)
+                elapsed_time = int(time.time() - state.start_time)
                 minutes = elapsed_time // 60
                 seconds = elapsed_time % 60
                 timestamp = f"(Time Stamp: {minutes:02d}:{seconds:02d})"
 
-                # Filter out duplicate or repeated phrases
-                if transcript != last_saved_segment:
-                    last_saved_segment = transcript
+                if transcript != state.last_saved_segment:
+                    state.last_saved_segment = transcript
                     formatted_line = f"{transcript} (Confidence: {confidence:.2f}) {timestamp}"
-                    transcriptions.append(formatted_line)
-                    save_transcription_to_file(formatted_line)
+                    state.transcriptions.append(formatted_line)
+                    save_transcription_to_file(user_dir, formatted_line)
 
-                    # Print the transcription to the console
-                    print(f"New line added: {formatted_line}")
+                    print(f"New line added for {user_dir}: {formatted_line}")
 
-                    # Detect and handle questions
                     questions = detect_questions(transcript)
                     for question in questions:
-                        print(f"Detected Question: {question}")
                         try:
-                            answer = get_gpt_response(question, "\n".join(transcriptions))
-                            print(f"Answer: {answer}")
-                            save_question_and_answer(question, answer)
+                            answer = get_gpt_response(question, "\n".join(state.transcriptions))
+                            save_question_and_answer(user_dir, question, answer)
                         except Exception as e:
                             print(f"Error generating answer for question '{question}': {e}")
 
-                    # Generate and save action items and meeting minutes periodically
                     try:
-                        meeting_minutes = generate_meeting_minutes("\n".join(transcriptions))
-                        save_meeting_minutes(meeting_minutes)
-                        
-                        # Notify frontend of new content
+                        meeting_minutes = generate_meeting_minutes("\n".join(state.transcriptions))
+                        save_meeting_minutes(user_dir, meeting_minutes)
                         notify_frontend_update()
                     except Exception as e:
                         print(f"Error processing updates: {e}")
 
-
-def stop_transcription():
-    """Stop the transcription process."""
-    should_continue.clear()  # Clear the flag to stop the transcription
+def stop_transcription(user_dir):
+    """Stop the transcription process for a specific user."""
+    state = get_user_state(user_dir)
+    state.should_continue.clear()

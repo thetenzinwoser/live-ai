@@ -741,9 +741,36 @@
             background: #f1f5f9;
             border-radius: 12px;
         }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .logout-button {
+            padding: 8px 16px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #c82333;
+        }
     </style>
 </head>
 <body>
+    <div class="header">
+        <h1>Live AI - Active Listening</h1>
+        <button id="logout-btn" class="logout-button">Logout</button>
+    </div>
+
     <div id="chat-container">
 
         <div id="chat-view" class="tab-content">
@@ -865,7 +892,12 @@
         function fetchQuestions() {
             showLoading("qa-list");
             fetch("/get-questions")
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const qaList = document.getElementById("qa-list");
                     if (data.questions && data.questions.length > 0) {
@@ -899,7 +931,8 @@
                 })
                 .catch(error => {
                     console.error("Error fetching questions:", error);
-                    document.getElementById("qa-list").innerHTML = '<div class="empty-state">Error loading questions.</div>';
+                    document.getElementById("qa-list").innerHTML = 
+                        '<div class="empty-state">Error loading questions. Please try refreshing the page.</div>';
                 });
         }
 
@@ -1209,7 +1242,12 @@
         // Add this to your existing JavaScript
         function fetchTranscript() {
             fetch("/get-transcript")
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const transcriptContainer = document.getElementById("transcript-messages");
                     if (data.lines && data.lines.length > 0) {
@@ -1237,13 +1275,36 @@
                         }).join('');
 
                         transcriptContainer.innerHTML = newContent;
-                        
-                        // Scroll to bottom for new content
                         transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+                    } else {
+                        transcriptContainer.innerHTML = '<div class="empty-state">No transcript available yet.</div>';
                     }
                 })
-                .catch(error => console.error("Error fetching transcript:", error));
+                .catch(error => {
+                    console.error("Error fetching transcript:", error);
+                    const transcriptContainer = document.getElementById("transcript-messages");
+                    transcriptContainer.innerHTML = '<div class="empty-state">Error loading transcript.</div>';
+                });
         }
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+            }
+        });
     </script>
 </body>
 </html>
