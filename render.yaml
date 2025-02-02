@@ -3,7 +3,7 @@ services:
     name: live-ai
     env: python
     buildCommand: |
-      apt-get update && apt-get install -y portaudio19-dev
+      apt-get update && apt-get install -y portaudio19-dev python3-pyaudio
       pip install --user -r requirements.txt
     startCommand: python app.py
     envVars:
